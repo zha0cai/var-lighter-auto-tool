@@ -853,6 +853,7 @@ function getCurrentConfig() {
     return JSON.parse(JSON.stringify(GLOBAL_CONFIG));
 }
 // ========== 使用方法 ==========
+console.log('脚本免费开源，作者推特：@ddazmon');
 console.log('🎯 多线程脚本已加载！');
 console.log('📋 使用方法:');
 console.log('  1. 输入 startAllThreads() 启动所有线程');
