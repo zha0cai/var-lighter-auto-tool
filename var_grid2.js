@@ -23,11 +23,11 @@ class BTCAutoTrading {
         WINDOW_PERCENT: 0.12,           // 12% → 7万时 ≈ ±4200美元范围
 
         // 买卖单比例（总和必须为1，可根据牛熊调整）
-        SELL_RATIO: 0.55,               // 55% ≈ 27~28个卖单（适合震荡偏多）
-        BUY_RATIO:  0.45,               // 45% ≈ 22~23个买单
+        SELL_RATIO: 0.5,               // 55% ≈ 27~28个卖单（适合震荡偏多）
+        BUY_RATIO:  0.5,               // 45% ≈ 22~23个买单
 
         // 网格间距
-        BASE_PRICE_INTERVAL: 50,        // 基础间距（会自动微调保证填满单数）
+        BASE_PRICE_INTERVAL: 30,        // 基础间距（会自动微调保证填满单数）
         SAFE_GAP: 20,                   // 比当前盘口再偏移一点，防止瞬成
 
         // 安全保护
@@ -156,7 +156,26 @@ class BTCAutoTrading {
         this.cycleCount = 0;
         console.log('BTC 50单网格自动交易已启动');
 
-        this.monitorInterval = setInterval(() => this.executeTradingCycle(), interval);
+        // 改用递归的setTimeout确保不重叠
+        const executeWithInterval = async () => {
+            if (!this.isMonitoring) return;
+            
+            const startTime = Date.now();
+            await this.executeTradingCycle();
+            const endTime = Date.now();
+            const executionTime = endTime - startTime;
+            
+            // 计算下一次执行的延迟
+            const nextDelay = Math.max(interval - executionTime, 1000); // 最少等待1秒
+            console.log(`周期执行耗时: ${executionTime}ms, 下次执行: ${nextDelay}ms后`);
+            
+            if (this.isMonitoring) {
+                setTimeout(executeWithInterval, nextDelay);
+            }
+        };
+        
+        // 立即开始第一个周期
+        executeWithInterval();
     }
 
     stopAutoTrading() {
@@ -193,8 +212,8 @@ class BTCAutoTrading {
             if (result.cancelOrders && result.cancelOrders.length > 0) {
                 console.log(`开始撤销 ${result.cancelOrders.length} 个远单...`);
                 for (const order of result.cancelOrders) {
-                    this.orderManager.cancelByPrice(order.price);
-                    this.delay(800);  // 撤单也加个小延迟更稳
+                    await this.orderManager.cancelByPrice(order.price);  // 添加 await
+                    await this.delay(1500);  // 撤单后等待1.5秒
                 }
             }
         } catch (err) {
@@ -527,7 +546,7 @@ class BTCOrderManager {
                       confirmBtn.click();
                       console.log(`已确认取消 $${targetNum.toLocaleString()}`);
                       resolve();
-                    }, 1000); // 稍微延长等待时间
+                    }, 300); // 稍微延长等待时间
                   }
 
                   if (attempts > 50) {
@@ -535,7 +554,7 @@ class BTCOrderManager {
                     console.warn('确认按钮超时，可能弹窗被拦截或已自动关闭');
                     resolve();
                   }
-                }, 100);
+                }, 300);
               });
 
               found = true;
@@ -561,10 +580,9 @@ class BTCOrderManager {
 const btcAutoTrader = new BTCAutoTrading();
 
 // ==================== 快捷指令（直接粘到控制台使用）===================
-// btcAutoTrader.startAutoTrading(10000);   // 启动（推荐10秒一次）
 // btcAutoTrader.stopAutoTrading();         // 停止
 // btcAutoTrader.getStatus();               // 查看状态
 // btcAutoTrader.clearOrderHistory();       // 清空记录
 
 // 建议第一次运行前先手动设置好仓位数量，然后执行：
-btcAutoTrader.startAutoTrading(10000);
+btcAutoTrader.startAutoTrading(3000);
